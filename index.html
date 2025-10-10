@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>카루타 독습 타이머 (모바일)</title>
+  <style>
+    :root {
+      --bg:#ffffff; --card:#e5eee4; --ink:#111; --muted:#314642; --line:#434e48; --accent:#8692a8;
+      --radius:16px;
+      --p-lower:#faf9ec;
+      --p-resonance:#ffffff;
+      --p-maai:#ffffff;
+      --p-upper:#c1dbcb;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, 'Noto Sans KR', sans-serif}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .title{font-weight:700;font-size:18px}
+    .btn{background:var(--card);border:1px solid var(--line);padding:10px 14px;border-radius:14px;cursor:pointer}
+    .btn:active{transform:scale(.98)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+    .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .textbox{background:#fefff9;border:0.5px solid var(--line);border-radius:12px;padding:12px;min-height:56px;white-space:pre-wrap;word-break:break-word}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .row-ctr{display:flex;gap:8px;align-items:center;justify-content:center}
+    .progress{height:12px;background:#e9e9f2;border-radius:999px;overflow:visible;position:relative}
+    .bar{height:100%;width:0;background:var(--accent);border-radius:999px;position:relative;z-index:2}
+    .track{position:absolute;inset:0;border-radius:999px;z-index:1;overflow:hidden}
+    .seg{position:absolute;top:0;bottom:0}
+    .tick{position:absolute;top:-6px;bottom:-6px;width:2px;background:#b8b8c7;z-index:3}
+    .small{font-size:12px;color:var(--muted)}
+    .badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;font-weight:600}
+    .phase-idle{background:#f2f3ec}
+    .phase-lower{background:var(--p-lower)}
+    .phase-resonance{background:var(--p-resonance)}
+    .phase-maai{background:var(--p-maai)}
+    .phase-upper{background:var(--p-upper)}
+    .phase-done{background:#e9ecef}
+    .nextbox{background:#c1dbcb;border:1px dashed #5a5e5b}
+    .error{color:#b00020}
+    .footer {
+      max-width: 720px;          /* 카드 폭과 동일 */
+      margin: 12px auto 24px;    /* 위아래 여백 */
+      color: #999;
+      font-size: 12px;
+      text-align: right;          /* 오른쪽 정렬 */
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">🃏 카루타 독수 타이머</div>
+      <button id="shuffle" class="btn">셔플</button>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <div class="small">순번: <span id="idx">1</span> / <span id="total">0</span></div>
+        <div id="phaseBadge" class="badge phase-idle">페이즈: <span id="phaseLabel">대기</span></div>
+      </div>
+
+      <div class="progress" aria-label="progress">
+        <div class="track" id="track"></div>
+        <div id="bar" class="bar"></div>
+      </div>
+
+      <!-- 지금 상구 → 지금 하구 → 다음 상구 -->
+      <div style="margin-top:14px" class="card">
+        <div class="label">지금 상구（上の句）</div>
+        <div id="kami" class="textbox">—</div>
+        <div class="label" style="margin-top:12px">지금 하구（下の句）</div>
+        <div id="shimo" class="textbox">—</div>
+        <div class="label" style="margin-top:12px">다음 상구（Next 上の句）</div>
+        <div id="next-kami" class="textbox nextbox">—</div>
+      </div>
+
+      <!-- <div class="card" style="margin-top:12px">
+        <div id="loadmsg" class="small"></div>
+      </div> -->
+
+      <div class="row-ctr" style="margin-top:12px">
+        <button id="prev" class="btn">⟵ 이전 (P)</button>
+        <button id="toggle" class="btn">시작 (Space)</button>
+        <button id="next" class="btn">다음 (N) ⟶</button>
+      </div>
+
+      <audio id="audio-upper" preload="none"></audio>
+      <audio id="audio-lower" preload="none"></audio>
+    </div>
+  </div>
+  <footer class="footer">Made by Hyelin</footer>
+
+
+  <script>
+    // 타이밍 (5·3·1·6)
+    const TIMING = { lower:5.0, resonance:3.0, maai:1.0, upper:6.0 };
+    const TOTAL = TIMING.lower + TIMING.resonance + TIMING.maai + TIMING.upper;
+
+    // 초기 카드(폴백)
+    const seeded = [
+      { id:1, kami:"秋(あき)の田(た)のーかりほの庵(いほ)のー苫(とま)を荒(あら)ーみー", shimo:"わがー衣手(ころもで)はー露(つゆ)にぬれーつつ⸺" },
+      { id:2, kami:"春過(はるすぎ)てー夏来(なつき)にけ(らし)ー白妙(しろたえ)ーのー", shimo:"衣(ころも)ーほ(すてふ)ー天(あま)の香具山(かぐやま)⸺" }
+    ];
+
+    let cards = seeded.slice();
+    let order = cards.map(c=>c.id);
+    let idx = 0;
+    let phase = 'idle';
+    let playing = false;
+    let remaining = 0;
+    let raf = null;
+
+    const elKami = document.getElementById('kami');
+    const elShimo = document.getElementById('shimo');
+    const elNextKami = document.getElementById('next-kami');
+    const elIdx = document.getElementById('idx');
+    const elTotal = document.getElementById('total');
+    const elPhase = document.getElementById('phaseLabel');
+    const elPhaseBadge = document.getElementById('phaseBadge');
+    const elBar = document.getElementById('bar');
+    const elTrack = document.getElementById('track');
+    const elLoadMsg = document.getElementById('loadmsg');
+    const btnPrev = document.getElementById('prev');
+    const btnNext = document.getElementById('next');
+    const btnToggle = document.getElementById('toggle');
+    const btnShuffle = document.getElementById('shuffle');
+    const audioUpper = document.getElementById('audio-upper');
+    const audioLower = document.getElementById('audio-lower');
+
+    function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+    function buildOrderKeepZeroFirst(){ const ids=cards.map(c=>c.id); if(ids.includes(0)){const rest=ids.filter(id=>id!==0); return [0,...shuffle(rest)];} return shuffle(ids); }
+    function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+    function drawSegments(){
+      elTrack.innerHTML='';
+      const segs=[
+        {width:TIMING.lower/TOTAL,color:getCss('--p-lower')},
+        {width:TIMING.resonance/TOTAL,color:getCss('--p-resonance')},
+        {width:TIMING.maai/TOTAL,color:getCss('--p-maai')},
+        {width:TIMING.upper/TOTAL,color:getCss('--p-upper')}
+      ];
+      let left=0;
+      segs.forEach((s,i)=>{
+        const seg=document.createElement('div');
+        seg.className='seg'; seg.style.left=(left*100)+'%'; seg.style.width=(s.width*100)+'%'; seg.style.background=s.color;
+        elTrack.appendChild(seg);
+        left+=s.width;
+        if(i<segs.length-1){const tick=document.createElement('div'); tick.className='tick'; tick.style.left=(left*100)+'%'; elTrack.appendChild(tick);}
+      });
+    }
+    function updatePhaseUI(){
+      const map={
+        idle:{label:'대기',cls:'phase-idle'},
+        lower:{label:'하구',cls:'phase-lower'},
+        resonance:{label:'여운',cls:'phase-resonance'},
+        maai:{label:'간격',cls:'phase-maai'},
+        upper:{label:'상구',cls:'phase-upper'},
+        done:{label:'완료',cls:'phase-done'}
+      };
+      const info=map[phase]||map.idle;
+      elPhase.textContent=info.label; elPhaseBadge.className='badge '+info.cls;
+    }
+    function getPhaseTime(p){return TIMING[p]||0;}
+    function updateBar(){
+      let before=0;
+      if(phase==='resonance') before=TIMING.lower;
+      if(phase==='maai') before=TIMING.lower+TIMING.resonance;
+      if(phase==='upper') before=TIMING.lower+TIMING.resonance+TIMING.maai;
+      const elapsed=Math.max(0,before+((phase==='idle'||phase==='done')?0:(getPhaseTime(phase)-remaining)));
+      elBar.style.width=Math.min(100,(elapsed/TOTAL)*100)+'%';
+    }
+
+    function setCard(i){
+      idx=Math.max(0,Math.min(order.length-1,i));
+      const id=order[idx];
+      const cur=cards.find(x=>x.id===id)||{};
+      elKami.textContent=cur.kami||'—';
+      elShimo.textContent=(Object.prototype.hasOwnProperty.call(cur,'simo')?cur.simo:cur.shimo)||'—';
+      elIdx.textContent=String(idx+1);
+      elTotal.textContent=String(order.length);
+      const next=cards.find(x=>x.id===order[idx+1]);
+      elNextKami.textContent=next?.kami||'—';
+      audioUpper.src=cur.audio_upper||'';
+      audioLower.src=cur.audio_lower||'';
+      resetTimer();
+    }
+
+    function resetTimer(){stop(); phase='idle'; remaining=0; updatePhaseUI(); updateBar();}
+    function start(){
+      if(playing) return;
+      if(phase==='idle'||phase==='done'){phase='lower'; remaining=TIMING.lower; try{if(audioLower.src) audioLower.play();}catch(e){}}
+      playing=true; btnToggle.textContent='일시정지 (Space)'; updatePhaseUI();
+      let last=performance.now();
+      const step=(now)=>{const dt=(now-last)/1000; last=now; remaining=Math.max(0,remaining-dt); if(remaining===0) advancePhase(); updateBar(); if(playing) raf=requestAnimationFrame(step);};
+      raf=requestAnimationFrame(step);
+    }
+    function stop(){playing=false; if(raf) cancelAnimationFrame(raf); raf=null; btnToggle.textContent='시작 (Space)'; updateBar();}
+    function toggle(){playing?stop():start();}
+    function advancePhase(){
+      if(phase==='lower'){phase='resonance'; remaining=TIMING.resonance;}
+      else if(phase==='resonance'){phase='maai'; remaining=TIMING.maai;}
+      else if(phase==='maai'){phase='upper'; remaining=TIMING.upper; try{if(audioUpper.src) audioUpper.play();}catch(e){}}
+      else if(phase==='upper'){phase='done'; remaining=0; stop();}
+      updatePhaseUI();
+    }
+
+    btnPrev.onclick=()=>setCard(idx-1);
+    btnNext.onclick=()=>setCard(idx+1);
+    btnShuffle.onclick=()=>{order=buildOrderKeepZeroFirst(); setCard(0);};
+    btnToggle.onclick=toggle;
+    window.addEventListener('keydown',e=>{
+      const k=e.key.toLowerCase();
+      if(k===' '){e.preventDefault(); toggle();}
+      if(k==='n') setCard(idx+1);
+      if(k==='p') setCard(idx-1);
+      if(k==='r'){order=buildOrderKeepZeroFirst(); setCard(0);}
+    });
+
+    async function loadCards(){
+      try{
+        const res=await fetch('./cards.json',{cache:'no-store'});
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const json=await res.json();
+        if(!Array.isArray(json)) throw new Error('cards.json은 배열이어야 합니다');
+        cards=json.map((x,i)=>({
+          id:Number(x.id??i),
+          kami:x.kami||'',
+          shimo:(Object.prototype.hasOwnProperty.call(x,'simo')?x.simo:(x.shimo||'')),
+          audio_upper:x.audio_upper||'',
+          audio_lower:x.audio_lower||''
+        }));
+        order=buildOrderKeepZeroFirst();
+        //elLoadMsg.textContent=`cards.json에서 ${cards.length}장을 불러왔습니다.`;
+        setCard(0);
+      }catch(err){
+        elLoadMsg.innerHTML=`<span class="error">cards.json을 불러오지 못했습니다</span> — 로컬 서버에서 여세요.<br>오류: ${err.message}`;
+        cards=seeded.slice(); order=buildOrderKeepZeroFirst(); setCard(0);
+      }
+    }
+
+    drawSegments(); loadCards();
+  </script>
+</body>
+</html>
