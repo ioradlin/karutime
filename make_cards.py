@@ -7,7 +7,7 @@ from pathlib import Path
 # ----------------------------------------------------------------------
 poems_path = Path(r"C:\Users\domir\OneDrive\Desktop\karuta\poems")
 output_path = Path(r"C:\Users\domir\OneDrive\Desktop\karuta\cards.json")
-file_path = r"C:\Users\domir\OneDrive\Desktop\karuta\poems_yomi_clean.csv"
+file_path = r"C:\Users\domir\OneDrive\Desktop\karuta\poems_yomi2.csv"
 
 # ----------------------------------------------------------------------
 # 1. cards 초기화 및 딕셔너리로 변환 (ID 기반 접근을 위해)
