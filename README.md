@@ -1,4 +1,4 @@
-# karutimer
+# karutime
 Simple web application for karuta reciter to help read poems in time.
 
 카루타이머 링크: https://ioradlin.github.io/karutimer/
