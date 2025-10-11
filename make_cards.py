@@ -2,21 +2,13 @@ import json
 import pandas as pd
 from pathlib import Path
 
-# 수동추가
-# {
-#     "id": 0,
-#     "text": "難波津に咲さくやこの花冬ごもり今を春べと咲やこの花",
-#     "kami": "難波津にー咲さくやこの花ー冬ごもーりー",
-#     "simo": "今をー春べとー咲やこのー花⸺"
-#   },
-
 
 # ----------------------------------------------------------------------
 # 경로 설정
 # ----------------------------------------------------------------------
 poems_path = Path(r"C:\Users\domir\OneDrive\Desktop\karuta\poems")
 output_path = Path(r"C:\Users\domir\OneDrive\Desktop\karuta\cards.json")
-file_path = r"C:\Users\domir\OneDrive\Desktop\karuta\poems_yomi_3.csv"
+file_path = r"C:\Users\domir\OneDrive\Desktop\karuta\poems_full.csv"
 
 # ----------------------------------------------------------------------
 # 1. cards 초기화 및 딕셔너리로 변환 (ID 기반 접근을 위해)
@@ -38,7 +30,9 @@ for i, poem in enumerate(blocks):
         "id": card_id,
         "text": poem,
         "kami": "",
-        "simo": ""
+        "simo": "",
+        "poem_hira": "",
+        "poem_kr": ""
     }
     
 # ----------------------------------------------------------------------
@@ -75,6 +69,8 @@ try:
             # 딕셔너리 키(ID)를 사용하여 데이터 업데이트
             cards_dict[poem_id]['kami'] = kami
             cards_dict[poem_id]['simo'] = simo
+            cards_dict[poem_id]['poem_hira'] = row.get('poem_hira', '')
+            cards_dict[poem_id]['poem_kr'] = row.get('poem_kr', '')
             
             # 디버깅 출력은 주석 처리합니다.
             # print(f"[{poem_id}. {row.get('poet')}] -> Kami/Simo 업데이트 완료")
