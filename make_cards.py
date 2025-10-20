@@ -71,6 +71,8 @@ try:
             cards_dict[poem_id]['simo'] = simo
             cards_dict[poem_id]['poem_hira'] = row.get('poem_hira', '')
             cards_dict[poem_id]['poem_kr'] = row.get('poem_kr', '')
+            cards_dict[poem_id]['kami_hira'] = row.get('poem_hira', '')
+            cards_dict[poem_id]['simo_hira'] = row.get('poem_kr', '')
             
             # 디버깅 출력은 주석 처리합니다.
             # print(f"[{poem_id}. {row.get('poet')}] -> Kami/Simo 업데이트 완료")
